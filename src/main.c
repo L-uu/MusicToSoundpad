@@ -29,7 +29,9 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
     if (currentProcessId == processId) {
         wchar_t windowTitle[256];
         if (GetWindowTextW(hwnd, windowTitle, sizeof(windowTitle) / sizeof(windowTitle[0])) > 0) {
-            wprintf(L"MainWindowTitle: %s\n", windowTitle);
+            if (wcscmp(windowTitle, L"Spotify Premium") != 0) {
+                wprintf(L"MainWindowTitle: %s\n", windowTitle);
+            }
             return FALSE; // Stop enumerating windows
         }
     }
@@ -42,16 +44,16 @@ void GetMainWindowTitle(DWORD processId) {
 
 int main() {
     const wchar_t* processName = L"Spotify.exe";
-    DWORD pid = GetProcessIdByName(processName);
-    if (pid != 0) {
-        wprintf(L"Process ID of %s: %lu\n", processName, pid);
-        while (1) {
+    DWORD pid;
+    while (1) {
+        pid = GetProcessIdByName(processName);
+        if (pid != 0) {
+            wprintf(L"Process ID of %s: %lu\n", processName, pid);
             GetMainWindowTitle(pid);
-            Sleep(1000); // Sleep for 1 second before checking again
+        } else {
+            wprintf(L"Process %s is not running.\n", processName);
         }
-    }
-    else {
-        wprintf(L"Process %s is not running.\n", processName);
+        Sleep(1000); // Sleep for 1 second before checking again
     }
     return 0;
 }
