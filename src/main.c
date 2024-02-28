@@ -31,6 +31,12 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
         if (GetWindowTextW(hwnd, windowTitle, sizeof(windowTitle) / sizeof(windowTitle[0])) > 0) {
             if (wcscmp(windowTitle, L"Spotify Premium") != 0) {
                 wprintf(L"MainWindowTitle: %s\n", windowTitle);
+
+                // If the title changes, send a pause command to the process
+                HWND hwndSpotify = FindWindowW(NULL, windowTitle);
+                if (hwndSpotify != NULL) {
+                    SendMessageW(hwndSpotify, WM_APPCOMMAND, 0, MAKELPARAM(0, APPCOMMAND_MEDIA_PAUSE));
+                }
             }
             return FALSE; // Stop enumerating windows
         }
@@ -44,16 +50,23 @@ void GetMainWindowTitle(DWORD processId) {
 
 int main() {
     const wchar_t* processName = L"Spotify.exe";
-    DWORD pid;
+    DWORD pid = GetProcessIdByName(processName);
+    if (pid != 0) {
+        wprintf(L"Process ID of %s: %lu\n", processName, pid);
+    } else {
+        wprintf(L"Process %s is not running.\n", processName);
+        return 1; // Exit if process is not found
+    }
+
+    // Monitor MainWindowTitle for changes
     while (1) {
-        pid = GetProcessIdByName(processName);
-        if (pid != 0) {
-            wprintf(L"Process ID of %s: %lu\n", processName, pid);
-            GetMainWindowTitle(pid);
-        } else {
-            wprintf(L"Process %s is not running.\n", processName);
+        if (GetProcessIdByName(processName) == 0) {
+            wprintf(L"Process %s has been closed.\n", processName);
+            break;
         }
+        GetMainWindowTitle(pid);
         Sleep(1000); // Sleep for 1 second before checking again
     }
+
     return 0;
 }
