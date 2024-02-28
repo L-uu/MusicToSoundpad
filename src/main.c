@@ -87,7 +87,7 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
                     STARTUPINFOW si = { sizeof(si) };
                     PROCESS_INFORMATION pi;
                     wchar_t commandLine[MAX_PATH];
-                    swprintf_s(commandLine, MAX_PATH, L"utils\\yt-dlp.exe -f ba -x ytsearch:\"%s\"", windowTitle);
+                    swprintf_s(commandLine, MAX_PATH, L"\"utils\\yt-dlp.exe\" -f ba -x ytsearch:\"%s\"", windowTitle);
                     if (CreateProcessW(NULL, commandLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
                         CloseHandle(pi.hProcess);
                         CloseHandle(pi.hThread);
