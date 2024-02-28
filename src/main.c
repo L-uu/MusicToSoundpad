@@ -74,8 +74,8 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
     if (currentProcessId == processId) {
         wchar_t windowTitle[256];
         if (GetWindowTextW(hwnd, windowTitle, sizeof(windowTitle) / sizeof(windowTitle[0])) > 0) {
-            if (wcscmp(windowTitle, L"Spotify Premium") != 0 && wcscmp(windowTitle, L"GDI+ Window (Spotify.exe)") != 0) {
-                wprintf(L"MainWindowTitle: %s\n", windowTitle);
+            if (wcscmp(windowTitle, L"Spotify") != 0 && wcscmp(windowTitle, L"Spotify Premium") != 0 && wcscmp(windowTitle, L"Spotify Free") != 0 && wcscmp(windowTitle, L"GDI+ Window (Spotify.exe)") != 0) {
+                wprintf(L"Now Playing: %s\n", windowTitle);
 
                 // If the title changes, send a pause command to the process
                 HWND hwndSpotify = FindWindowW(NULL, windowTitle);
