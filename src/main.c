@@ -1,44 +1,57 @@
+#include <windows.h>
+#include <tlhelp32.h>
 #include <stdio.h>
-#include <stdbool.h>
-#include <string.h>
-#include <Windows.h>
-#include <Psapi.h>
+#include <wchar.h>
 
-bool IsProcessRunning(const char* processName) {
-    DWORD processIds[1024], bytesReturned;
-    if (!EnumProcesses(processIds, sizeof(processIds), &bytesReturned))
-        return false;
-
-    // Calculate how many process identifiers were returned.
-    DWORD numProcesses = bytesReturned / sizeof(DWORD);
-
-    for (DWORD i = 0; i < numProcesses; i++)
-    {
-        DWORD pid = processIds[i];
-        if (pid != 0)
-        {
-            HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
-            if (hProcess != NULL)
-            {
-                char szProcessName[MAX_PATH] = { 0 };
-                DWORD bytesCopied = GetModuleBaseNameA(hProcess, NULL, szProcessName, sizeof(szProcessName));
-                CloseHandle(hProcess);
-                if (bytesCopied > 0 && strcmp(szProcessName, processName) == 0)
-                    return true;
-            }
+DWORD GetProcessIdByName(const wchar_t* processName) {
+    DWORD pid = 0;
+    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snapshot != INVALID_HANDLE_VALUE) {
+        PROCESSENTRY32W processEntry;
+        processEntry.dwSize = sizeof(PROCESSENTRY32W);
+        if (Process32FirstW(snapshot, &processEntry)) {
+            do {
+                if (wcscmp(processEntry.szExeFile, processName) == 0) {
+                    pid = processEntry.th32ProcessID;
+                    break;
+                }
+            } while (Process32NextW(snapshot, &processEntry));
         }
+        CloseHandle(snapshot);
     }
-    return false;
+    return pid;
 }
 
-int main()
-{
-    const char* processName = "Spotify.exe";
-    if (!IsProcessRunning(processName))
-    {
-        printf("%s is not running.\n", processName);
-        return 1;
+BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
+    DWORD processId = *(DWORD*)lParam;
+    DWORD currentProcessId;
+    GetWindowThreadProcessId(hwnd, &currentProcessId);
+    if (currentProcessId == processId) {
+        wchar_t windowTitle[256];
+        if (GetWindowTextW(hwnd, windowTitle, sizeof(windowTitle) / sizeof(windowTitle[0])) > 0) {
+            wprintf(L"MainWindowTitle: %s\n", windowTitle);
+            return FALSE; // Stop enumerating windows
+        }
     }
-    printf("%s is running.\n", processName);
+    return TRUE; // Continue enumerating windows
+}
+
+void GetMainWindowTitle(DWORD processId) {
+    EnumWindows(EnumWindowsProc, (LPARAM)&processId);
+}
+
+int main() {
+    const wchar_t* processName = L"Spotify.exe";
+    DWORD pid = GetProcessIdByName(processName);
+    if (pid != 0) {
+        wprintf(L"Process ID of %s: %lu\n", processName, pid);
+        while (1) {
+            GetMainWindowTitle(pid);
+            Sleep(1000); // Sleep for 1 second before checking again
+        }
+    }
+    else {
+        wprintf(L"Process %s is not running.\n", processName);
+    }
     return 0;
 }
