@@ -74,8 +74,8 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
     if (currentProcessId == processId) {
         wchar_t windowTitle[256];
         if (GetWindowTextW(hwnd, windowTitle, sizeof(windowTitle) / sizeof(windowTitle[0])) > 0) {
-            if (wcscmp(windowTitle, L"Spotify Premium") != 0) {
-                wprintf(L"MainWindowTitle: %s\n", windowTitle);
+            if (wcscmp(windowTitle, L"Spotify Premium") != 0 || wcscmp(windowTitle, L"GDI+ Window (Spotify.exe)") != 0) {
+                wprintf(L"Now Playing: %s\n", windowTitle);
 
                 // If the title changes, send a pause command to the process
                 HWND hwndSpotify = FindWindowW(NULL, windowTitle);
@@ -119,32 +119,39 @@ void GetMainWindowTitle(DWORD processId) {
 
 int main() {
     const wchar_t* processName = L"Spotify.exe";
-    DWORD pid = GetProcessIdByName(processName);
-    if (pid != 0) {
-        wprintf(L"Process ID of %s: %lu\n", processName, pid);
-    } else {
-        wprintf(L"Process %s is not running.\n", processName);
-        return 1; // Exit if process is not found
-    }
+    DWORD pid = 0;
 
-    // Check and create the "utils" directory
-    const wchar_t* utilsDirectoryName = L"utils";
-    CheckAndCreateDirectory(utilsDirectoryName);
-
-    // Check and download yt-dlp.exe
-    const wchar_t* utilsFolderPath = L"utils";
-    if (!CheckAndDownloadYTDLP(utilsFolderPath)) {
-        return 1; // Exit if failed to download yt-dlp.exe
-    }
-
-    // Monitor MainWindowTitle for changes
+    // Monitor for the Spotify process
     while (1) {
-        if (GetProcessIdByName(processName) == 0) {
-            wprintf(L"Process %s has been closed.\n", processName);
-            break;
+        pid = GetProcessIdByName(processName);
+        if (pid != 0) {
+            // Spotify process found, proceed with the main logic
+            wprintf(L"Process ID of %s: %lu\n", processName, pid);
+
+            // Check and create the "utils" directory
+            const wchar_t* utilsDirectoryName = L"utils";
+            CheckAndCreateDirectory(utilsDirectoryName);
+
+            // Check and download yt-dlp.exe
+            const wchar_t* utilsFolderPath = L"utils";
+            if (!CheckAndDownloadYTDLP(utilsFolderPath)) {
+                return 1; // Exit if failed to download yt-dlp.exe
+            }
+
+            // Monitor MainWindowTitle for changes
+            while (1) {
+                if (GetProcessIdByName(processName) == 0) {
+                    wprintf(L"Process %s has been closed.\n", processName);
+                    break;
+                }
+                GetMainWindowTitle(pid);
+                Sleep(1000); // Sleep for 1 second before checking again
+            }
+        } else {
+            // Spotify process not found, wait for it to start
+            wprintf(L"Process %s is not running. Waiting for it to start...\n", processName);
+            Sleep(5000); // Sleep for 5 seconds before checking again
         }
-        GetMainWindowTitle(pid);
-        Sleep(1000); // Sleep for 1 second before checking again
     }
 
     return 0;
