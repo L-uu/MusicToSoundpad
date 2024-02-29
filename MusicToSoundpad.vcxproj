@@ -21,9 +21,11 @@
   <ItemGroup>
     <ClCompile Include="src\main.c" />
     <ClCompile Include="src\md5.c" />
+    <ClCompile Include="src\pipes.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\md5.h" />
+    <ClInclude Include="src\pipes.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

@@ -4,6 +4,7 @@
 #include <wchar.h>
 #include <Urlmon.h>
 #include "md5.h"
+#include "pipes.h"
 
 #pragma comment(lib, "urlmon.lib")
 
@@ -97,8 +98,51 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
                     STARTUPINFOW si = { sizeof(si) };
                     PROCESS_INFORMATION pi;
                     wchar_t commandLine[MAX_PATH];
-                    swprintf_s(commandLine, MAX_PATH, L"\"utils\\yt-dlp.exe\" -f ba -x ytsearch:\"%s\"", windowTitle);
+                    swprintf_s(commandLine, MAX_PATH, L"\"utils\\yt-dlp.exe\" -f ba -x --audio-format mp3 -o \"%%USERPROFILE%%\\Music\\%s.%%(ext)s\" ytsearch:\"%s\"", windowTitle, windowTitle);
                     if (CreateProcessW(NULL, commandLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+                        // Wait for the process to finish before continuing
+                        WaitForSingleObject(pi.hProcess, INFINITE);
+
+                        // FIXME: We need to convert windowTitle from a wide to narrow
+
+                        // Determine the size of the required buffer
+                        size_t bufferSize = 0;
+                        if (wcstombs_s(&bufferSize, NULL, 0, windowTitle, 0) != 0) {
+                            perror("wcstombs_s");
+                            return 1;
+                        }
+
+                        // Allocate memory for the narrow character buffer
+                        char* narrowWindowTitle = (char*)malloc(bufferSize + 8); // +1 for null terminator
+                        if (narrowWindowTitle == NULL) {
+                            perror("malloc");
+                            return 1;
+                        }
+
+                        // Perform the conversion
+                        if (wcstombs_s(NULL, narrowWindowTitle, bufferSize + 1, windowTitle, bufferSize) != 0) {
+                            perror("wcstombs");
+                            free(narrowWindowTitle);
+                            return 1;
+                        }
+
+                        // We now have to construct a path to the .mp3 file for SoundPad
+                        char userProfile[512];
+                        char path[512];
+
+                        // Get the value of the USERPROFILE environment variable
+                        char* userProfileEnv = getenv("USERPROFILE");
+                        if (userProfileEnv == NULL) {
+                            fprintf(stderr, "USERPROFILE environment variable not found\n");
+                            return 1;
+                        }
+
+                        // Construct the path using USERPROFILE
+                        snprintf(path, sizeof(path), "%s\\Music\\%s.mp3", userProfileEnv, narrowWindowTitle);
+
+                        // Add to SoundPad library and start playing
+                        checkForEntry(getSoundList(), path);
+
                         CloseHandle(pi.hProcess);
                         CloseHandle(pi.hThread);
                     }
