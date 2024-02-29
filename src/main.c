@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <wchar.h>
 #include <Urlmon.h>
+#include "md5.h"
 
 #pragma comment(lib, "urlmon.lib")
 
@@ -30,7 +31,6 @@ BOOL DownloadFile(const wchar_t* url, const wchar_t* filePath) {
     }
 }
 
-// TODO: Compare the sums of the existing and latest binary to check for updates
 BOOL CheckAndDownloadYTDLP(const wchar_t* utilsFolderPath) {
     const wchar_t* ytDlpFileName = L"yt-dlp.exe";
     const wchar_t* ytDlpUrl = L"https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
@@ -44,7 +44,12 @@ BOOL CheckAndDownloadYTDLP(const wchar_t* utilsFolderPath) {
         wprintf(L"Downloading yt-dlp.exe...\n");
         return DownloadFile(ytDlpUrl, ytDlpFilePath);
     } else {
-        wprintf(L"yt-dlp.exe already exists in the utils folder.\n");
+        wprintf(L"yt-dlp.exe already exists in the utils folder. Checking for updates...\n");
+        if (UpdateYTDLP() == 2)
+        {
+            wprintf(L"Updating yt-dlp.exe...\n");
+            return DownloadFile(ytDlpUrl, ytDlpFilePath);
+        }
         return TRUE;
     }
 }
