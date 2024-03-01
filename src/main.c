@@ -103,7 +103,7 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
                         // Wait for the process to finish before continuing
                         WaitForSingleObject(pi.hProcess, INFINITE);
 
-                        // FIXME: We need to convert windowTitle from a wide to narrow
+                        // FIXME: We need to convert windowTitle from Multibyte to Byte
 
                         // Determine the size of the required buffer
                         size_t bufferSize = 0;

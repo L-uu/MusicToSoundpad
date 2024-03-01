@@ -60,9 +60,9 @@ char* sendRequest(const char* request) {
 int isSuccessPrintResponse(const char* response) {
     if (strcmp(response, "R-200") != 0) {
         printf("Error: %s\n", response);
-        return 0;
+        return 1;
     }
-    return 1;
+    return 0;
 }
 
 char* getSoundList() {
@@ -103,13 +103,9 @@ int getIndex(const char* inputCopy, const char* searchTerm) {
     char* line = strtok_s(inputCopy, "\n", &context);
     while (line != NULL) {
         if (strstr(line, searchTerm) != NULL) {
-            printf("%s\n", line);
-            if (sscanf_s(line, "%*[^0-9]%d", &songIndex) == 1) {
-                printf("Extracted index value: %d\n", songIndex);
-            }
-            else {
+            if (!sscanf_s(line, "%*[^0-9]%d", &songIndex)) {
                 printf("Failed to extract index value.\n");
-                return 0;
+                return 0; // songIndex will remain unchanged
             }
             break; // Exit loop after finding the line
         }
@@ -122,15 +118,16 @@ int checkForEntry(const char* input, const char* searchTerm) {
     int songIndex = getIndex(input, searchTerm);
 
     if (!songIndex) { // Item is not present in the Soundpad library. We need to add it.
-        if (!addSound(searchTerm)) {
+        printf("Attempting to add song to SoundPad library...\n");
+        if (addSound(searchTerm)) {
             printf("Failed to add sound: %s", searchTerm);
             return 1;
         }
-        printf("Sound added to SoundPad library.\n");
         Sleep(1000);
         songIndex = getIndex(getSoundList(), searchTerm);
     }
-    if (!playSound(songIndex)) {
+    printf("Attempting to play song from SoundPad library...\n");
+    if (playSound(songIndex)) {
         printf("Failed to play sound\n");
     }
     uninit(); // Clean up resources
