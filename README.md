@@ -1,22 +1,27 @@
-<sub>_I'm a little special so I will keep this nice and short.._</sub>🤤
+<sub>_I'm a little special so I'll keep this nice and short..._</sub>🤤
 
 
-MusictoSoundpad application allows you to play Spotify music through Soundpad (so you can annoy people with your awful taste in music). 
+# MusicToSoundpad
 
 
-<code style="color : greenyellow">**To Setup:**</code>
-
-- Downloaded the latest release .zip;
-
-- Extract the files to any folder (C:\Program Files\MusictoSoundpad) works;
-
-- Run the console application as administrator;
-
-- Play a song on spotify. The spotify song will be paused and then downloaded into your Music folder. These songs will then automatically show up in your Soundpad library;
-
-- Use the Soundpad interface as you normally would to play your chosen song through your chosen application. The songs will appear as labelled within Spotify. 
+This application assists you in playing Spotify music through Soundpad (so you can annoy people with your awful taste in music).
 
 
-<code style="color : red">**To Uninstall:**</code>
+### To Setup:
 
-- Simply delete all files within (C:\Program Files\MusictoSoundpad)
+- Downloaded the latest release.
+
+- Extract the files to any folder, the **.zip** should include the **MusicToSoundpad.exe** executable and the **utils** folder.
+
+- Run the console application. If **yt-dlp.exe** is missing from the **utils** folder or is outdated, the latest version will be downloaded.
+
+- Make sure Soundpad is running and the desired category is selected as this is where the songs will be added.
+
+- Play a song on Spotify. The song will be immediately paused and then downloaded to your **Music** folder, added to your SoundPad library and start playing.
+
+
+### To Uninstall:
+
+- Simply delete the **MusicToSoundpad.exe** executable and the **utils** folder containing dependencies.
+
+- Optionally delete all downloaded music from the **Music** folder.
