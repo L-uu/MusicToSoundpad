@@ -127,9 +127,6 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
                         }
 
                         // We now have to construct a path to the .mp3 file for SoundPad
-                        char userProfile[512];
-                        char path[512];
-
                         // Get the value of the USERPROFILE environment variable
                         char* userProfileEnv = getenv("USERPROFILE");
                         if (userProfileEnv == NULL) {
@@ -138,6 +135,7 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
                         }
 
                         // Construct the path using USERPROFILE
+                        char path[512];
                         snprintf(path, sizeof(path), "%s\\Music\\%s.mp3", userProfileEnv, narrowWindowTitle);
 
                         // Add to SoundPad library and start playing
