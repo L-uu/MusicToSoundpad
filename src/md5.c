@@ -10,23 +10,23 @@
 #define BUFSIZE 1024
 #define MD5_HASH_SIZE 16
 
-bool _DownloadFile(const char* url, const char* localFilePath) {
-    HINTERNET hInternet = InternetOpenA("MD5Check", INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
+bool _DownloadFile(const wchar_t* localFilePath, const wchar_t* url) {
+    HINTERNET hInternet = InternetOpen(L"MD5Check", INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
     if (hInternet == NULL) {
-        fprintf(stderr, "Error opening internet connection.\n");
+        fwprintf(stderr, L"Error opening internet connection.\n");
         return false;
     }
 
-    HINTERNET hURL = InternetOpenUrlA(hInternet, url, NULL, 0, INTERNET_FLAG_RELOAD, 0);
+    HINTERNET hURL = InternetOpenUrl(hInternet, url, NULL, 0, INTERNET_FLAG_RELOAD, 0);
     if (hURL == NULL) {
-        fprintf(stderr, "Error opening URL: %s\n", url);
+        fwprintf(stderr, L"Error opening URL: %s\n", url);
         InternetCloseHandle(hInternet);
         return false;
     }
 
     FILE* outputFile;
-    if (fopen_s(&outputFile, localFilePath, "wb") != 0 || outputFile == NULL) {
-        fprintf(stderr, "Error creating local file: %s\n", localFilePath);
+    if (_wfopen_s(&outputFile, localFilePath, L"wb") != 0 || outputFile == NULL) {
+        fwprintf(stderr, L"Error creating local file: %s\n", localFilePath);
         InternetCloseHandle(hURL);
         InternetCloseHandle(hInternet);
         return false;
@@ -45,14 +45,14 @@ bool _DownloadFile(const char* url, const char* localFilePath) {
     return true;
 }
 
-bool CalculateMD5HashOfFile(const char* filename, BYTE* md5hash) {
+bool CalculateMD5HashOfFile(const wchar_t* filename, BYTE* md5hash) {
     HCRYPTPROV hProv = 0;
     HCRYPTHASH hHash = 0;
     HANDLE hFile = NULL;
     BYTE rgbFile[BUFSIZE];
     DWORD cbRead = 0;
 
-    if (!CryptAcquireContextA(&hProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
+    if (!CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
         return false;
     }
 
@@ -61,7 +61,7 @@ bool CalculateMD5HashOfFile(const char* filename, BYTE* md5hash) {
         return false;
     }
 
-    hFile = CreateFileA(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+    hFile = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
         CryptDestroyHash(hHash);
         CryptReleaseContext(hProv, 0);
@@ -91,56 +91,61 @@ bool CalculateMD5HashOfFile(const char* filename, BYTE* md5hash) {
     return true;
 }
 
-int UpdateYTDLP() {
-    char* localFile = "utils\\yt-dlp.exe";
-    char* remoteURL = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
+int UpdateFile(const wchar_t* localFile, const wchar_t* remoteURL) {
     BYTE localMD5[MD5_HASH_SIZE];
     BYTE remoteMD5[MD5_HASH_SIZE];
 
-    char tempFilePath[MAX_PATH];
-    if (GetTempPathA(sizeof(tempFilePath), tempFilePath) == 0) {
-        fprintf(stderr, "Error getting temporary file path.\n");
+    wchar_t tempFilePath[MAX_PATH];
+    if (GetTempPath(sizeof(tempFilePath)/sizeof(wchar_t), tempFilePath) == 0) {
+        fwprintf(stderr, L"Error getting temporary file path.\n");
         return 1;
     }
 
-    strcat_s(tempFilePath, sizeof(tempFilePath), "tempfile.dat");
+    wcscat_s(tempFilePath, sizeof(tempFilePath)/sizeof(wchar_t), L"tempfile.dat");
 
-    if (!_DownloadFile(remoteURL, tempFilePath)) {
-        fprintf(stderr, "Error downloading remote file.\n");
+    if (!_DownloadFile(tempFilePath, remoteURL)) {
+        fwprintf(stderr, L"Error downloading remote file.\n");
         return 1;
     }
 
     if (!CalculateMD5HashOfFile(localFile, localMD5)) {
-        fprintf(stderr, "Error calculating MD5 hash of local file.\n");
+        fwprintf(stderr, L"Error calculating MD5 hash of local file.\n");
         return 1;
     }
 
     if (!CalculateMD5HashOfFile(tempFilePath, remoteMD5)) {
-        fprintf(stderr, "Error calculating MD5 hash of remote file.\n");
+        fwprintf(stderr, L"Error calculating MD5 hash of remote file.\n");
         return 1;
     }
 
-    printf("Local MD5: ");
+    wprintf(L"Local MD5: ");
     for (int i = 0; i < MD5_HASH_SIZE; i++) {
-        printf("%02x", localMD5[i]);
+        wprintf(L"%02x", localMD5[i]);
     }
-    printf("\n");
+    wprintf(L"\n");
 
-    printf("Remote MD5: ");
+    wprintf(L"Remote MD5: ");
     for (int i = 0; i < MD5_HASH_SIZE; i++) {
-        printf("%02x", remoteMD5[i]);
+        wprintf(L"%02x", remoteMD5[i]);
     }
-    printf("\n");
+    wprintf(L"\n");
 
     if (memcmp(localMD5, remoteMD5, sizeof(localMD5)) == 0) {
-        printf("MD5 checksums match.\n");
+        wprintf(L"MD5 checksums match.\n");
     } else {
-        printf("MD5 checksums do not match.\n");
+        wprintf(L"MD5 checksums do not match.\n");
+        if (localFile == L"MusicToSoundpad.exe") {
+            HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+            SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_INTENSITY);
+            wprintf(L"UPDATE AVAILABLE... PLEASE DOWNLOAD LATEST VERSION FROM GITHUB...\n");
+            SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+            return 0;
+        }
         return 2;
     }
 
-    if (remove(tempFilePath) != 0) {
-        fprintf(stderr, "Error deleting temporary file.\n");
+    if (_wremove(tempFilePath) != 0) {
+        fwprintf(stderr, L"Error deleting temporary file.\n");
     }
 
     return 0;

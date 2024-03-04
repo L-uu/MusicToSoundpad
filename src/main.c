@@ -21,8 +21,8 @@ void CheckAndCreateDirectory(const wchar_t* directoryName) {
     }
 }
 
-BOOL DownloadFile(const wchar_t* url, const wchar_t* filePath) {
-    HRESULT hr = URLDownloadToFileW(NULL, url, filePath, 0, NULL);
+BOOL DownloadFile(const wchar_t* filePath, const wchar_t* url) {
+    HRESULT hr = URLDownloadToFile(NULL, url, filePath, 0, NULL);
     if (hr == S_OK) {
         wprintf(L"Download successful.\n");
         return TRUE;
@@ -32,24 +32,20 @@ BOOL DownloadFile(const wchar_t* url, const wchar_t* filePath) {
     }
 }
 
-BOOL CheckAndDownloadYTDLP(const wchar_t* utilsFolderPath) {
-    const wchar_t* ytDlpFileName = L"yt-dlp.exe";
-    const wchar_t* ytDlpUrl = L"https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
-    wchar_t ytDlpFilePath[MAX_PATH];
-    swprintf_s(ytDlpFilePath, MAX_PATH, L"%s\\%s", utilsFolderPath, ytDlpFileName);
+BOOL CheckUpdates(const wchar_t* filePath, const wchar_t* url) {
 
-    // Check if yt-dlp.exe exists in the utils folder
-    DWORD fileAttributes = GetFileAttributesW(ytDlpFilePath);
+    // Check if file exists
+    DWORD fileAttributes = GetFileAttributes(filePath);
     if (fileAttributes == INVALID_FILE_ATTRIBUTES) {
         // File doesn't exist, download it
-        wprintf(L"Downloading yt-dlp.exe...\n");
-        return DownloadFile(ytDlpUrl, ytDlpFilePath);
+        wprintf(L"Downloading %s...\n", filePath);
+        return DownloadFile(filePath, url);
     } else {
-        wprintf(L"yt-dlp.exe already exists in the utils folder. Checking for updates...\n");
-        if (UpdateYTDLP() == 2)
+        wprintf(L"%s already exists. Checking for updates...\n", filePath);
+        if (UpdateFile(filePath, url) == 2)
         {
-            wprintf(L"Updating yt-dlp.exe...\n");
-            return DownloadFile(ytDlpUrl, ytDlpFilePath);
+            wprintf(L"Updating %s...\n", filePath);
+            return DownloadFile(filePath, url);
         }
         return TRUE;
     }
@@ -170,22 +166,24 @@ void GetMainWindowTitle(DWORD processId) {
 }
 
 int main() {
+    // Check and create the "utils" directory
+    const wchar_t* utilsDirectoryName = L"utils";
+    CheckAndCreateDirectory(utilsDirectoryName);
+
+    // Check for updates
+    if (!CheckUpdates(L"MusicToSoundpad.exe", L"https://github.com/L-uu/MusicToSoundpad/releases/latest/download/MD5.txt")) {
+        return 1; // Something has gone badly wrong
+    }
+    if (!CheckUpdates(L"utils\\yt-dlp.exe", L"https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe")) {
+        return 1; // Exit if failed to download yt-dlp.exe
+    }
+
     const wchar_t* processName = L"Spotify.exe";
     DWORD pid = GetProcessIdByName(processName);
 
     // We don't want to spam the console
     BOOL isMessagePrinted1 = FALSE;
     BOOL isMessagePrinted2 = FALSE;
-
-    // Check and create the "utils" directory
-    const wchar_t* utilsDirectoryName = L"utils";
-    CheckAndCreateDirectory(utilsDirectoryName);
-
-    // Check and download yt-dlp.exe
-    const wchar_t* utilsFolderPath = L"utils";
-    if (!CheckAndDownloadYTDLP(utilsFolderPath)) {
-        return 1; // Exit if failed to download yt-dlp.exe
-    }
 
     while (1) {
         pid = GetProcessIdByName(processName);
