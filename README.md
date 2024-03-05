@@ -9,7 +9,7 @@ This application assists you in playing Spotify music through Soundpad (so you c
 
 ### To Setup:
 
-- Download the latest release.
+- Download the latest release **(MusicToSoundpad.zip)**.
 
 - Extract the files to any folder, the **.zip** should include the **MusicToSoundpad.exe** executable and the **utils** folder.
 
