@@ -171,7 +171,7 @@ int main() {
     CheckAndCreateDirectory(utilsDirectoryName);
 
     // Check for updates
-    if (!CheckUpdates(L"MusicToSoundpad.exe", L"https://github.com/L-uu/MusicToSoundpad/releases/latest/download/MD5.txt")) {
+    if (!CheckUpdates(L"MusicToSoundpad.exe", L"https://github.com/L-uu/MusicToSoundpad/releases/latest/download/MusicToSoundpad.exe")) {
         return 1; // Something has gone badly wrong
     }
     if (!CheckUpdates(L"utils\\yt-dlp.exe", L"https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe")) {
@@ -179,7 +179,7 @@ int main() {
     }
 
     const wchar_t* processName = L"Spotify.exe";
-    DWORD pid = GetProcessIdByName(processName);
+    DWORD pid;
 
     // We don't want to spam the console
     BOOL isMessagePrinted1 = FALSE;
