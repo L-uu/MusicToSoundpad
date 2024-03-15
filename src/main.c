@@ -109,7 +109,7 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
                         }
 
                         // Allocate memory for the narrow character buffer
-                        char* narrowWindowTitle = (char*)malloc(bufferSize + 8); // +1 for null terminator
+                        char* narrowWindowTitle = (char*)malloc(bufferSize + 1); // +1 for null terminator
                         if (narrowWindowTitle == NULL) {
                             perror("malloc");
                             return 1;
