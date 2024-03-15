@@ -70,6 +70,18 @@ DWORD GetProcessIdByName(const wchar_t* processName) {
     return pid; // Return the process ID, this will remain as 0 if not found
 }
 
+void SanitiseTitle(wchar_t *title) {
+    wchar_t invalidCharacters[] = { '<', '>', ':', '"', '/', '\\', '|', '?', '*' };
+    for (int i = 0; i < wcslen(title); i++) {
+        for (int j = 0; j < sizeof(invalidCharacters); j++) {
+            if (title[i] == invalidCharacters[j]) {
+                title[i] = '_';
+                break;
+            }
+        }
+    }
+}
+
 BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
     DWORD processId = *(DWORD*)lParam;
     DWORD currentProcessId;
@@ -89,6 +101,9 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
                 if (hwndSpotify != NULL) {
                     SendMessageW(hwndSpotify, WM_APPCOMMAND, 0, MAKELPARAM(0, APPCOMMAND_MEDIA_PAUSE));
                     
+                    // Sanitise the title, some characters aren't allowed in file names
+                    SanitiseTitle(windowTitle);
+
                     // Execute yt-dlp.exe
                     DWORD lastError;
                     STARTUPINFOW si = { sizeof(si) };
