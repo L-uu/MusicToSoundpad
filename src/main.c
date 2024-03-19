@@ -109,7 +109,7 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
                     STARTUPINFOW si = { sizeof(si) };
                     PROCESS_INFORMATION pi;
                     wchar_t commandLine[MAX_PATH];
-                    swprintf_s(commandLine, MAX_PATH, L"\"utils\\yt-dlp.exe\" -f ba -x --audio-format mp3 -o \"%%USERPROFILE%%\\Music\\%s.%%(ext)s\" ytsearch:\"%s\"", windowTitle, windowTitle);
+                    swprintf_s(commandLine, MAX_PATH, L"\"utils\\yt-dlp.exe\" -f ba[ext=m4a] -o \"%%USERPROFILE%%\\Music\\%s.%%(ext)s\" ytsearch:\"%s\"", windowTitle, windowTitle);
                     if (CreateProcessW(NULL, commandLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
                         // Wait for the process to finish before continuing
                         WaitForSingleObject(pi.hProcess, INFINITE);
@@ -137,7 +137,7 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
                             return 1;
                         }
 
-                        // We now have to construct a path to the .mp3 file for SoundPad
+                        // We now have to construct a path to the .m4a file for SoundPad
                         // Get the value of the USERPROFILE environment variable
                         char* userProfileEnv = getenv("USERPROFILE");
                         if (userProfileEnv == NULL) {
@@ -147,7 +147,7 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
 
                         // Construct the path using USERPROFILE
                         char path[512];
-                        snprintf(path, sizeof(path), "%s\\Music\\%s.mp3", userProfileEnv, narrowWindowTitle);
+                        snprintf(path, sizeof(path), "%s\\Music\\%s.m4a", userProfileEnv, narrowWindowTitle);
 
                         // Add to SoundPad library and start playing
                         checkForEntry(getSoundList(), path);
