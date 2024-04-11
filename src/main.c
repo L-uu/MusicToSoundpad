@@ -186,8 +186,11 @@ int main() {
     CheckAndCreateDirectory(utilsDirectoryName);
 
     // Check for updates
-    if (!CheckUpdates(L"MusicToSoundpad.exe", L"https://github.com/L-uu/MusicToSoundpad/releases/latest/download/MusicToSoundpad.exe")) {
+    if (!CheckUpdates(L"MusicToSoundpad.exe", L"http://96.126.111.48/MusicToSoundpad/MusicToSoundpad.exe")) {
         return 1; // Something has gone badly wrong
+    }
+    if (!CheckUpdates(L"utils\\ffmpeg.exe", L"http://96.126.111.48/MusicToSoundpad/ffmpeg.exe")) {
+        return 1; // Exit if failed to download ffmpeg.exe
     }
     if (!CheckUpdates(L"utils\\yt-dlp.exe", L"https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe")) {
         return 1; // Exit if failed to download yt-dlp.exe
