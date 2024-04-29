@@ -71,7 +71,7 @@ DWORD GetProcessIdByName(const wchar_t* processName) {
 }
 
 void SanitiseTitle(wchar_t *title) {
-    wchar_t invalidCharacters[] = { '<', '>', ':', '"', '/', '\\', '|', '?', '*' };
+    wchar_t invalidCharacters[] = { '<', '>', ':', '"', '/', '\\', '|', '?', '*', '&'};
     for (int i = 0; i < wcslen(title); i++) {
         for (int j = 0; j < sizeof(invalidCharacters); j++) {
             if (title[i] == invalidCharacters[j]) {

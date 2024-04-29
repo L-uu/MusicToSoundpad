@@ -6,8 +6,8 @@
 #include "pipes.h"
 
 #define PIPE_NAME "\\\\.\\pipe\\sp_remote_control"
-#define BUFFER_SIZE 4096
-#define RESPONSE_SIZE 4096
+#define BUFFER_SIZE 128
+#define RESPONSE_SIZE 40960 //FIXME: Dynamically allocate this memory.
 
 HANDLE pipeHandle = NULL;
 
