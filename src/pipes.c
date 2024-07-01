@@ -7,7 +7,6 @@
 
 #define PIPE_NAME "\\\\.\\pipe\\sp_remote_control"
 #define BUFFER_SIZE 128
-#define RESPONSE_SIZE 40960 //FIXME: Dynamically allocate this memory.
 
 HANDLE pipeHandle = NULL;
 
@@ -43,16 +42,40 @@ char* sendRequest(const char* request) {
     DWORD bytesWritten;
     if (!WriteFile(pipeHandle, request, strlen(request), &bytesWritten, NULL)) {
         printf("Error writing to pipe\n");
+        CloseHandle(pipeHandle);
         exit(EXIT_FAILURE);
     }
 
-    char response[RESPONSE_SIZE];
+    char* response = NULL;
+    size_t responseSize = 0;
     DWORD bytesRead;
-    if (!ReadFile(pipeHandle, response, RESPONSE_SIZE - 1, &bytesRead, NULL)) {
-        printf("Error reading from pipe\n");
-        exit(EXIT_FAILURE);
-    }
-    response[bytesRead] = '\0'; // Null-terminate the string
+    const size_t chunkSize = 512; // Read in chunks of 512 bytes
+    char buffer[512];
+
+    do {
+        if (!ReadFile(pipeHandle, buffer, chunkSize, &bytesRead, NULL)) {
+            printf("Error reading from pipe: %ld\n", GetLastError());
+            free(response);
+            CloseHandle(pipeHandle);
+            exit(EXIT_FAILURE);
+        }
+
+        // Allocate or expand the response buffer
+        char* newResponse = realloc(response, responseSize + bytesRead + 1);
+        if (!newResponse) {
+            printf("Memory allocation error\n");
+            free(response);
+            CloseHandle(pipeHandle);
+            exit(EXIT_FAILURE);
+        }
+        response = newResponse;
+
+        // Copy the new data to the response buffer
+        memcpy(response + responseSize, buffer, bytesRead);
+        responseSize += bytesRead;
+    } while (bytesRead == chunkSize);
+
+    response[responseSize] = '\0'; // Null-terminate the string
 
     return _strdup(response);
 }
