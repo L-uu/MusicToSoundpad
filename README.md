@@ -11,9 +11,9 @@ This application assists you in playing Spotify music through Soundpad (so you c
 
 - Download the latest release **(MusicToSoundpad.zip)**.
 
-- Extract the files to any folder, the **.zip** should include the **MusicToSoundpad.exe** executable and the **utils** folder.
+- Extract the files to any folder, the **.zip** should include the **MusicToSoundpad.exe** executable.
 
-- Run the console application. If **yt-dlp.exe** is missing from the **utils** folder or is outdated, the latest version will be downloaded.
+- Run the console application. On first launch, a folder called **utils** will be created. This is where the necessary dependencies (**yt-dlp.exe** and **ffmpeg.exe**) will be downloaded and kept updated on each launch.
 
 - Make sure Soundpad is running and the desired category is selected as this is where the songs will be added.
 
