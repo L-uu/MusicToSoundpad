@@ -51,7 +51,7 @@ BOOL CheckUpdates(const wchar_t* filePath, const wchar_t* url) {
     }
 }
 
-DWORD GetProcessIdByName(const wchar_t* processName) {
+DWORD GetProcessIdByName(const wchar_t* processNames[2], const wchar_t** ptrToProcessFoundName) {
     DWORD pid = 0; // Will store the process ID once found
     HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0); // Create a snapshot of the currently running processes
     if (snapshot != INVALID_HANDLE_VALUE) {
@@ -59,9 +59,15 @@ DWORD GetProcessIdByName(const wchar_t* processName) {
         processEntry.dwSize = sizeof(PROCESSENTRY32W);
         if (Process32FirstW(snapshot, &processEntry)) {
             do {
-                if (wcscmp(processEntry.szExeFile, processName) == 0) { // Simple string comparison, check if the process name is what we're looking for
+                if (wcscmp(processEntry.szExeFile, processNames[0]) == 0) { // Simple string comparison, check if the process name is what we're looking for
                     pid = processEntry.th32ProcessID; // Store the ID of the process
+                    *ptrToProcessFoundName = processNames[0]; // We dereference a pointer to a pointer to change the value that the original pointer points to
                     break; // End the loop, we got what we want
+                }
+                else if (wcscmp(processEntry.szExeFile, processNames[1]) == 0) { // We repeat the process above if the other process was not found
+                    pid = processEntry.th32ProcessID;
+                    *ptrToProcessFoundName = processNames[1];
+                    break;
                 }
             } while (Process32NextW(snapshot, &processEntry));
         }
@@ -93,7 +99,8 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
             if (wcscmp(windowTitle, L"Spotify") != 0
                 && wcscmp(windowTitle, L"Spotify Premium") != 0
                 && wcscmp(windowTitle, L"Spotify Free") != 0
-                && wcscmp(windowTitle, L"GDI+ Window (Spotify.exe)") != 0) {
+                && wcscmp(windowTitle, L"GDI+ Window (Spotify.exe)") != 0
+                && wcscmp(windowTitle, L"TIDAL") != 0) {
                 wprintf(L"Now Playing: %s\n", windowTitle);
 
                 // If the title changes, send a pause command to the process
@@ -196,7 +203,8 @@ int main() {
         return 1; // Exit if failed to download yt-dlp.exe
     }
 
-    const wchar_t* processName = L"Spotify.exe";
+    const wchar_t* processNames[2] = { L"Spotify.exe", L"TIDAL.exe" };
+    const wchar_t* processFoundName;
     DWORD pid;
 
     // We don't want to spam the console
@@ -204,17 +212,17 @@ int main() {
     BOOL isMessagePrinted2 = FALSE;
 
     while (1) {
-        pid = GetProcessIdByName(processName);
+        pid = GetProcessIdByName(processNames, &processFoundName);
         if (pid != 0) {
             if (!isMessagePrinted1) {
-                wprintf(L"Process ID of %s: %lu\n", processName, pid);
+                wprintf(L"Process ID of %s: %lu\n", processFoundName, pid);
                 isMessagePrinted1 = TRUE;
                 isMessagePrinted2 = FALSE;
             }
             GetMainWindowTitle(pid);
         } else {
             if (!isMessagePrinted2) {
-                wprintf(L"Process %s is not running.\n", processName);
+                wprintf(L"No processes running.\n");
                 isMessagePrinted1 = FALSE;
                 isMessagePrinted2 = TRUE;
             }
