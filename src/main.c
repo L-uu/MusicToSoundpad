@@ -85,6 +85,12 @@ void SanitiseTitle(wchar_t *title) {
                 break;
             }
         }
+
+		// Replace non-ASCII characters with underscore
+		// FIXME: Unicode handling needed for full support
+        if (title[i] > 127) {
+            title[i] = '_';
+        }
     }
 }
 
