@@ -76,8 +76,77 @@ DWORD GetProcessIdByName(const wchar_t* processNames[2], const wchar_t** ptrToPr
     return pid; // Return the process ID, this will remain as 0 if not found
 }
 
-void SanitiseTitle(wchar_t *title) {
-    wchar_t invalidCharacters[] = { '<', '>', ':', '"', '/', '\\', '|', '?', '*', '&'};
+char* MbToBConvert(wchar_t* windowTitle) {
+    // FIXME: We need to convert windowTitle from Multibyte to Byte
+    // Determine the size of the required buffer
+    size_t bufferSize = 0;
+    if (wcstombs_s(&bufferSize, NULL, 0, windowTitle, 0) != 0) {
+        perror("wcstombs_s");
+        return 1;
+    }
+
+    // Allocate memory for the narrow character buffer
+    char* narrowWindowTitle = (char*)malloc(bufferSize + 1); // +1 for null terminator
+    if (narrowWindowTitle == NULL) {
+        perror("malloc");
+        return 1;
+    }
+
+    // Perform the conversion
+    if (wcstombs_s(NULL, narrowWindowTitle, bufferSize + 1, windowTitle, bufferSize) != 0) {
+        perror("wcstombs");
+        free(narrowWindowTitle);
+        return 1;
+    }
+    return narrowWindowTitle;
+}
+
+void ExecYtdlp(wchar_t* windowTitle) {
+    DWORD lastError;
+    STARTUPINFOW si = { sizeof(si) };
+    PROCESS_INFORMATION pi;
+    wchar_t commandLine[MAX_PATH];
+    swprintf_s(commandLine, MAX_PATH, L"\"utils\\yt-dlp.exe\" -f ba[ext=m4a] -o \"%%USERPROFILE%%\\Music\\%s.%%(ext)s\" ytsearch:\"%s\"", windowTitle, windowTitle);
+    if (CreateProcessW(NULL, commandLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+        // Wait for the process to finish before continuing
+        WaitForSingleObject(pi.hProcess, INFINITE);
+
+        char* narrowWindowTitle = MbToBConvert(windowTitle);
+
+        // We now have to construct a path to the .m4a file for SoundPad
+        // Get the value of the USERPROFILE environment variable
+        char* userProfileEnv = getenv("USERPROFILE");
+        if (userProfileEnv == NULL) {
+            fprintf(stderr, "USERPROFILE environment variable not found\n");
+            return 1;
+        }
+
+        // Construct the path using USERPROFILE
+        char path[512];
+        snprintf(path, sizeof(path), "%s\\Music\\%s.m4a", userProfileEnv, narrowWindowTitle);
+
+        // Add to SoundPad library and start playing
+        checkForEntry(getSoundList(), path);
+
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+    } else {
+        lastError = GetLastError();
+        LPWSTR errorMessage = NULL;
+        FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+            NULL, lastError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&errorMessage, 0, NULL);
+        if (errorMessage != NULL) {
+            wprintf(L"Failed to execute yt-dlp.exe. Error code: %lu, Error message: %s\n", lastError, errorMessage);
+            LocalFree(errorMessage);
+        }
+        else {
+            wprintf(L"Failed to execute yt-dlp.exe. Error code: %lu\n", lastError);
+        }
+    }
+}
+
+void SanitiseTitle(wchar_t* title) {
+    wchar_t invalidCharacters[] = { '<', '>', ':', '"', '/', '\\', '|', '?', '*', '&' };
     for (int i = 0; i < wcslen(title); i++) {
         for (int j = 0; j < sizeof(invalidCharacters); j++) {
             if (title[i] == invalidCharacters[j]) {
@@ -86,12 +155,29 @@ void SanitiseTitle(wchar_t *title) {
             }
         }
 
-		// Replace non-ASCII characters with underscore
-		// FIXME: Unicode handling needed for full support
+        // Replace non-ASCII characters with underscore
+        // FIXME: Unicode handling needed for full support
         if (title[i] > 127) {
             title[i] = '_';
         }
     }
+}
+
+void PauseApplication(wchar_t* windowTitle) {
+    HWND hwnd = FindWindowW(NULL, windowTitle);
+    if (hwnd != NULL) {
+        SendMessageW(hwnd, WM_APPCOMMAND, 0, MAKELPARAM(0, APPCOMMAND_MEDIA_PAUSE));
+    }
+}
+
+void StartPlaying(wchar_t* windowTitle) {
+    wprintf(L"Now Playing: %s\n", windowTitle);
+    // If the title changes, send a pause command to the process
+    PauseApplication(windowTitle);
+    // Sanitise the title, some characters aren't allowed in file names
+    SanitiseTitle(windowTitle);
+    // Execute yt-dlp.exe
+    ExecYtdlp(windowTitle);
 }
 
 BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
@@ -102,86 +188,13 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
         wchar_t windowTitle[256];
         if (GetWindowTextW(hwnd, windowTitle, sizeof(windowTitle) / sizeof(windowTitle[0])) > 0) {
             // If a song isn't playing, do nothing
-            if (wcscmp(windowTitle, L"Spotify") != 0
-                && wcscmp(windowTitle, L"Spotify Premium") != 0
-                && wcscmp(windowTitle, L"Spotify Free") != 0
-                && wcscmp(windowTitle, L"GDI+ Window (Spotify.exe)") != 0
-                && wcscmp(windowTitle, L"TIDAL") != 0) {
-                wprintf(L"Now Playing: %s\n", windowTitle);
-
-                // If the title changes, send a pause command to the process
-                HWND hwndSpotify = FindWindowW(NULL, windowTitle);
-                if (hwndSpotify != NULL) {
-                    SendMessageW(hwndSpotify, WM_APPCOMMAND, 0, MAKELPARAM(0, APPCOMMAND_MEDIA_PAUSE));
-                    
-                    // Sanitise the title, some characters aren't allowed in file names
-                    SanitiseTitle(windowTitle);
-
-                    // Execute yt-dlp.exe
-                    DWORD lastError;
-                    STARTUPINFOW si = { sizeof(si) };
-                    PROCESS_INFORMATION pi;
-                    wchar_t commandLine[MAX_PATH];
-                    swprintf_s(commandLine, MAX_PATH, L"\"utils\\yt-dlp.exe\" -f ba[ext=m4a] -o \"%%USERPROFILE%%\\Music\\%s.%%(ext)s\" ytsearch:\"%s\"", windowTitle, windowTitle);
-                    if (CreateProcessW(NULL, commandLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
-                        // Wait for the process to finish before continuing
-                        WaitForSingleObject(pi.hProcess, INFINITE);
-
-                        // FIXME: We need to convert windowTitle from Multibyte to Byte
-
-                        // Determine the size of the required buffer
-                        size_t bufferSize = 0;
-                        if (wcstombs_s(&bufferSize, NULL, 0, windowTitle, 0) != 0) {
-                            perror("wcstombs_s");
-                            return 1;
-                        }
-
-                        // Allocate memory for the narrow character buffer
-                        char* narrowWindowTitle = (char*)malloc(bufferSize + 1); // +1 for null terminator
-                        if (narrowWindowTitle == NULL) {
-                            perror("malloc");
-                            return 1;
-                        }
-
-                        // Perform the conversion
-                        if (wcstombs_s(NULL, narrowWindowTitle, bufferSize + 1, windowTitle, bufferSize) != 0) {
-                            perror("wcstombs");
-                            free(narrowWindowTitle);
-                            return 1;
-                        }
-
-                        // We now have to construct a path to the .m4a file for SoundPad
-                        // Get the value of the USERPROFILE environment variable
-                        char* userProfileEnv = getenv("USERPROFILE");
-                        if (userProfileEnv == NULL) {
-                            fprintf(stderr, "USERPROFILE environment variable not found\n");
-                            return 1;
-                        }
-
-                        // Construct the path using USERPROFILE
-                        char path[512];
-                        snprintf(path, sizeof(path), "%s\\Music\\%s.m4a", userProfileEnv, narrowWindowTitle);
-
-                        // Add to SoundPad library and start playing
-                        checkForEntry(getSoundList(), path);
-
-                        CloseHandle(pi.hProcess);
-                        CloseHandle(pi.hThread);
-                    }
-                    else {
-                        lastError = GetLastError();
-                        LPWSTR errorMessage = NULL;
-                        FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-                            NULL, lastError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&errorMessage, 0, NULL);
-                        if (errorMessage != NULL) {
-                            wprintf(L"Failed to execute yt-dlp.exe. Error code: %lu, Error message: %s\n", lastError, errorMessage);
-                            LocalFree(errorMessage);
-                        }
-                        else {
-                            wprintf(L"Failed to execute yt-dlp.exe. Error code: %lu\n", lastError);
-                        }
-                    }
-                }
+            if (wcscmp(windowTitle, L"Spotify")
+                && wcscmp(windowTitle, L"Spotify Premium")
+                && wcscmp(windowTitle, L"Spotify Free")
+                && wcscmp(windowTitle, L"GDI+ Window (Spotify.exe)")
+                && wcscmp(windowTitle, L"TIDAL")
+                && wcscmp(windowTitle, L"Default IME")) {
+                StartPlaying(windowTitle);
             }
             return FALSE; // Stop enumerating windows
         }
