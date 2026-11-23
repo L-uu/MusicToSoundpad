@@ -82,26 +82,26 @@ char* MbToBConvert(wchar_t* windowTitle) {
     size_t bufferSize = 0;
     if (wcstombs_s(&bufferSize, NULL, 0, windowTitle, 0) != 0) {
         perror("wcstombs_s");
-        return 1;
+        return NULL;
     }
 
     // Allocate memory for the narrow character buffer
-    char* narrowWindowTitle = (char*)malloc(bufferSize + 1); // +1 for null terminator
+    char* narrowWindowTitle = (char*)malloc(bufferSize);
     if (narrowWindowTitle == NULL) {
         perror("malloc");
-        return 1;
+        return NULL;
     }
 
     // Perform the conversion
-    if (wcstombs_s(NULL, narrowWindowTitle, bufferSize + 1, windowTitle, bufferSize) != 0) {
+    if (wcstombs_s(NULL, narrowWindowTitle, bufferSize, windowTitle, bufferSize) != 0) {
         perror("wcstombs");
         free(narrowWindowTitle);
-        return 1;
+        return NULL;
     }
     return narrowWindowTitle;
 }
 
-void ExecYtdlp(wchar_t* windowTitle) {
+int ExecYtdlp(wchar_t* windowTitle) {
     DWORD lastError;
     STARTUPINFOW si = { sizeof(si) };
     PROCESS_INFORMATION pi;
@@ -118,18 +118,21 @@ void ExecYtdlp(wchar_t* windowTitle) {
         char* userProfileEnv = getenv("USERPROFILE");
         if (userProfileEnv == NULL) {
             fprintf(stderr, "USERPROFILE environment variable not found\n");
+            free(narrowWindowTitle);
             return 1;
         }
 
         // Construct the path using USERPROFILE
         char path[512];
         snprintf(path, sizeof(path), "%s\\Music\\%s.m4a", userProfileEnv, narrowWindowTitle);
+        free(narrowWindowTitle);
 
         // Add to SoundPad library and start playing
         checkForEntry(getSoundList(), path);
 
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
+        return 0;
     } else {
         lastError = GetLastError();
         LPWSTR errorMessage = NULL;
@@ -142,6 +145,7 @@ void ExecYtdlp(wchar_t* windowTitle) {
         else {
             wprintf(L"Failed to execute yt-dlp.exe. Error code: %lu\n", lastError);
         }
+        return 1;
     }
 }
 
