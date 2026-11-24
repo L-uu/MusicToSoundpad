@@ -105,8 +105,8 @@ int ExecYtdlp(wchar_t* windowTitle) {
     DWORD lastError;
     STARTUPINFOW si = { sizeof(si) };
     PROCESS_INFORMATION pi;
-    wchar_t commandLine[MAX_PATH];
-    swprintf_s(commandLine, MAX_PATH, L"\"utils\\yt-dlp.exe\" -f ba[ext=m4a] -o \"%%USERPROFILE%%\\Music\\%s.%%(ext)s\" ytsearch:\"%s\"", windowTitle, windowTitle);
+    wchar_t commandLine[512];
+    swprintf_s(commandLine, 512, L"\"utils\\yt-dlp.exe\" -f ba[ext=m4a] -o \"%%USERPROFILE%%\\Music\\%s.%%(ext)s\" ytsearch:\"%s audio\"", windowTitle, windowTitle);
     if (CreateProcessW(NULL, commandLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
         // Wait for the process to finish before continuing
         WaitForSingleObject(pi.hProcess, INFINITE);
