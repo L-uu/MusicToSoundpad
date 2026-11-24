@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <wchar.h>
 #include <Urlmon.h>
+#include <locale.h>
 #include "md5.h"
 #include "pipes.h"
 
@@ -76,64 +77,13 @@ DWORD GetProcessIdByName(const wchar_t* processNames[2], const wchar_t** ptrToPr
     return pid; // Return the process ID, this will remain as 0 if not found
 }
 
-char* MbToBConvert(wchar_t* windowTitle) {
-    // FIXME: We need to convert windowTitle from Multibyte to Byte
-    // Determine the size of the required buffer
-    size_t bufferSize = 0;
-    if (wcstombs_s(&bufferSize, NULL, 0, windowTitle, 0) != 0) {
-        perror("wcstombs_s");
-        return NULL;
-    }
-
-    // Allocate memory for the narrow character buffer
-    char* narrowWindowTitle = (char*)malloc(bufferSize);
-    if (narrowWindowTitle == NULL) {
-        perror("malloc");
-        return NULL;
-    }
-
-    // Perform the conversion
-    if (wcstombs_s(NULL, narrowWindowTitle, bufferSize, windowTitle, bufferSize) != 0) {
-        perror("wcstombs");
-        free(narrowWindowTitle);
-        return NULL;
-    }
-    return narrowWindowTitle;
-}
-
 int ExecYtdlp(wchar_t* windowTitle) {
     DWORD lastError;
     STARTUPINFOW si = { sizeof(si) };
     PROCESS_INFORMATION pi;
-    wchar_t commandLine[512];
-    swprintf_s(commandLine, 512, L"\"utils\\yt-dlp.exe\" -f ba[ext=m4a] -o \"%%USERPROFILE%%\\Music\\%s.%%(ext)s\" ytsearch:\"%s audio\"", windowTitle, windowTitle);
-    if (CreateProcessW(NULL, commandLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
-        // Wait for the process to finish before continuing
-        WaitForSingleObject(pi.hProcess, INFINITE);
-
-        char* narrowWindowTitle = MbToBConvert(windowTitle);
-
-        // We now have to construct a path to the .m4a file for SoundPad
-        // Get the value of the USERPROFILE environment variable
-        char* userProfileEnv = getenv("USERPROFILE");
-        if (userProfileEnv == NULL) {
-            fprintf(stderr, "USERPROFILE environment variable not found\n");
-            free(narrowWindowTitle);
-            return 1;
-        }
-
-        // Construct the path using USERPROFILE
-        char path[512];
-        snprintf(path, sizeof(path), "%s\\Music\\%s.m4a", userProfileEnv, narrowWindowTitle);
-        free(narrowWindowTitle);
-
-        // Add to SoundPad library and start playing
-        checkForEntry(getSoundList(), path);
-
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-        return 0;
-    } else {
+    wchar_t commandLine[2048];
+    swprintf_s(commandLine, _countof(commandLine), L"\"utils\\yt-dlp.exe\" -f ba[ext=m4a] -o \"%%USERPROFILE%%\\Music\\%s.%%(ext)s\" ytsearch:\"%s audio\"", windowTitle, windowTitle);
+    if (!CreateProcessW(NULL, commandLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
         lastError = GetLastError();
         LPWSTR errorMessage = NULL;
         FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -147,22 +97,67 @@ int ExecYtdlp(wchar_t* windowTitle) {
         }
         return 1;
     }
+    // Wait for the process to finish before continuing
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    return 0;
+}
+
+char* WToANSI(wchar_t* src, char* dest, size_t destCount, BOOL* lossy) {
+    if (!src) return NULL;
+    BOOL usedDefaultChar = FALSE;
+    if (!WideCharToMultiByte(CP_ACP, WC_NO_BEST_FIT_CHARS, src, -1, dest, (int)destCount, NULL, &usedDefaultChar)) {
+        dest[0] = '\0';
+        return NULL;
+    }
+    if (lossy) *lossy = usedDefaultChar;
+    return dest;
+}
+
+char* WToUTF8(wchar_t* src, char* dest, size_t destCount) {
+    if (!src) return NULL;
+    int written = WideCharToMultiByte(CP_UTF8, 0, src, -1, dest, (int)destCount, NULL, NULL);
+    if (!written) {
+        dest[0] = '\0';
+        return NULL;
+    }
+    return dest;
+}
+
+char* WToShort(wchar_t* src, char* dest, size_t destCount) {
+    DWORD length = GetShortPathNameW(src, NULL, 0);
+    if (length == 0) return NULL;
+    wchar_t* shortPath = (wchar_t*)malloc(length * sizeof(wchar_t));
+    if (!shortPath) return NULL;
+    if (!GetShortPathNameW(src, shortPath, length)) return NULL;
+    WToUTF8(shortPath, dest, destCount);
+    free(shortPath);
+    return dest;
+}
+
+wchar_t* ConstructWidePath(wchar_t* windowTitle, wchar_t* path, size_t pathCount) {
+    // We now have to construct a path to the .m4a file for SoundPad
+    // Get the value of the USERPROFILE environment variable
+    const wchar_t* userProfileEnv = _wgetenv(L"USERPROFILE");
+    if (userProfileEnv == NULL) {
+        fprintf(stderr, "USERPROFILE environment variable not found\n");
+        return NULL;
+    }
+
+    // Construct the path using USERPROFILE
+    swprintf_s(path, pathCount, L"%s\\Music\\%s.m4a", userProfileEnv, windowTitle);
+    return path;
 }
 
 void SanitiseTitle(wchar_t* title) {
-    wchar_t invalidCharacters[] = { '<', '>', ':', '"', '/', '\\', '|', '?', '*', '&' };
-    for (int i = 0; i < wcslen(title); i++) {
-        for (int j = 0; j < sizeof(invalidCharacters); j++) {
+    wchar_t invalidCharacters[] = { L'<', L'>', L':', L'"', L'/', L'\\', L'|', L'?', L'*' };
+    for (size_t i = 0; title[i] != L'\0'; i++) {
+        for (int j = 0; j < _countof(invalidCharacters); j++) {
             if (title[i] == invalidCharacters[j]) {
-                title[i] = '_';
+                title[i] = L'_';
                 break;
             }
-        }
-
-        // Replace non-ASCII characters with underscore
-        // FIXME: Unicode handling needed for full support
-        if (title[i] > 127) {
-            title[i] = '_';
         }
     }
 }
@@ -180,8 +175,27 @@ void StartPlaying(wchar_t* windowTitle) {
     PauseApplication(windowTitle);
     // Sanitise the title, some characters aren't allowed in file names
     SanitiseTitle(windowTitle);
-    // Execute yt-dlp.exe
+    wchar_t widePath[1024];
+    ConstructWidePath(windowTitle, widePath, _countof(widePath));
+    // Execute yt-dlp.exe to download the song
     ExecYtdlp(windowTitle);
+    char ansiPath[2048];
+    BOOL lossy = FALSE;
+    WToANSI(widePath, ansiPath, _countof(ansiPath), &lossy);
+    const char* soundList = getSoundList();
+    if (lossy) {
+        char shortPath[MAX_PATH];
+        WToShort(widePath, shortPath, _countof(shortPath));
+        if (soundList) {
+            checkForEntry(soundList, shortPath);
+        }
+    }
+    else {
+        if (soundList) {
+            checkForEntry(soundList, ansiPath);
+        }
+    }
+    free(soundList);
 }
 
 BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
@@ -212,6 +226,11 @@ void GetMainWindowTitle(DWORD processId) {
 }
 
 int main() {
+    // Make the console and the C runtime use UTF-8, so wprintf/printf can
+    // show non-ASCII song titles instead of '?' or garbled characters.
+    SetConsoleOutputCP(CP_UTF8);
+    setlocale(LC_ALL, ".UTF8");
+
     // Check and create the "utils" directory
     const wchar_t* utilsDirectoryName = L"utils";
     CheckAndCreateDirectory(utilsDirectoryName);

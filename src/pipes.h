@@ -1,11 +1,11 @@
 #pragma once
 
-void init();
-void uninit();
+void init(void);
+void uninit(void);
 char* sendRequest(const char* request);
 int isSuccessPrintResponse(const char* response);
-char* getSoundList();
+char* getSoundList(void);
 int addSound(const char* url);
-int playSound(const int index);
-int getIndex(const char* inputCopy, const char* searchTerm);
-int checkForEntry(const char* input, const char* searchTerm);
+int playSound(int index);
+int getIndex(char* inputCopy, const char* searchTerm);
+int checkForEntry(char* input, const char* searchTerm);

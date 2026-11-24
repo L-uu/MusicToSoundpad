@@ -40,7 +40,7 @@ char* sendRequest(const char* request) {
     init();
 
     DWORD bytesWritten;
-    if (!WriteFile(pipeHandle, request, strlen(request), &bytesWritten, NULL)) {
+    if (!WriteFile(pipeHandle, request, (DWORD)strlen(request), &bytesWritten, NULL)) {
         printf("Error writing to pipe\n");
         CloseHandle(pipeHandle);
         exit(EXIT_FAILURE);
@@ -53,7 +53,7 @@ char* sendRequest(const char* request) {
     char buffer[512];
 
     do {
-        if (!ReadFile(pipeHandle, buffer, chunkSize, &bytesRead, NULL)) {
+        if (!ReadFile(pipeHandle, buffer, (DWORD)chunkSize, &bytesRead, NULL)) {
             printf("Error reading from pipe: %ld\n", GetLastError());
             free(response);
             CloseHandle(pipeHandle);
@@ -77,7 +77,7 @@ char* sendRequest(const char* request) {
 
     response[responseSize] = '\0'; // Null-terminate the string
 
-    return _strdup(response);
+    return response;
 }
 
 int isSuccessPrintResponse(const char* response) {
@@ -111,7 +111,7 @@ int addSound(const char* url) {
     return success;
 }
 
-int playSound(const int index) {
+int playSound(int index) {
     char request[BUFFER_SIZE];
     snprintf(request, BUFFER_SIZE, "DoPlaySound(%d)", index);
     char* response = sendRequest(request);
@@ -120,10 +120,10 @@ int playSound(const int index) {
     return success;
 }
 
-int getIndex(const char* inputCopy, const char* searchTerm) {
+int getIndex(char* soundList, const char* searchTerm) {
     int songIndex = 0;
     char* context = NULL;
-    char* line = strtok_s(inputCopy, "\n", &context);
+    char* line = strtok_s(soundList, "\n", &context);
     while (line != NULL) {
         if (strstr(line, searchTerm) != NULL) {
             if (!sscanf_s(line, "%*[^0-9]%d", &songIndex)) {
@@ -137,7 +137,7 @@ int getIndex(const char* inputCopy, const char* searchTerm) {
     return songIndex;
 }
 
-int checkForEntry(const char* input, const char* searchTerm) {
+int checkForEntry(char* input, const char* searchTerm) {
     int songIndex = getIndex(input, searchTerm);
 
     if (!songIndex) { // Item is not present in the Soundpad library. We need to add it.
@@ -147,7 +147,11 @@ int checkForEntry(const char* input, const char* searchTerm) {
             return 1;
         }
         Sleep(1000);
-        songIndex = getIndex(getSoundList(), searchTerm);
+        char* soundList = getSoundList();
+        if (soundList != NULL) {
+            songIndex = getIndex(soundList, searchTerm);
+        }
+        free(soundList);
     }
     printf("Attempting to play song from SoundPad library...\n");
     if (playSound(songIndex)) {
