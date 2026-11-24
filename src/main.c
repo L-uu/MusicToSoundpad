@@ -82,7 +82,7 @@ int ExecYtdlp(wchar_t* windowTitle) {
     STARTUPINFOW si = { sizeof(si) };
     PROCESS_INFORMATION pi;
     wchar_t commandLine[2048];
-    swprintf_s(commandLine, _countof(commandLine), L"\"utils\\yt-dlp.exe\" -f ba[ext=m4a] -o \"%%USERPROFILE%%\\Music\\%s.%%(ext)s\" ytsearch:\"%s audio\"", windowTitle, windowTitle);
+    swprintf_s(commandLine, _countof(commandLine), L"\"utils\\yt-dlp.exe\" -f ba[ext=m4a] -o \"%%USERPROFILE%%\\Music\\%s.%%(ext)s\" ytsearch:\"%s lyrics\"", windowTitle, windowTitle);
     if (!CreateProcessW(NULL, commandLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
         lastError = GetLastError();
         LPWSTR errorMessage = NULL;
@@ -179,20 +179,22 @@ void StartPlaying(wchar_t* windowTitle) {
     ConstructWidePath(windowTitle, widePath, _countof(widePath));
     // Execute yt-dlp.exe to download the song
     ExecYtdlp(windowTitle);
+    char utf8Path[2048];
     char ansiPath[2048];
     BOOL lossy = FALSE;
+    WToUTF8(widePath, utf8Path, _countof(utf8Path));
     WToANSI(widePath, ansiPath, _countof(ansiPath), &lossy);
-    const char* soundList = getSoundList();
+    char* soundList = getSoundList();
     if (lossy) {
         char shortPath[MAX_PATH];
         WToShort(widePath, shortPath, _countof(shortPath));
         if (soundList) {
-            checkForEntry(soundList, shortPath);
+            checkForEntry(soundList, shortPath, shortPath);
         }
     }
     else {
         if (soundList) {
-            checkForEntry(soundList, ansiPath);
+            checkForEntry(soundList, ansiPath, utf8Path);
         }
     }
     free(soundList);

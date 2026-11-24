@@ -137,19 +137,19 @@ int getIndex(char* soundList, const char* searchTerm) {
     return songIndex;
 }
 
-int checkForEntry(char* input, const char* searchTerm) {
-    int songIndex = getIndex(input, searchTerm);
+int checkForEntry(char* input, const char* addPath, const char* searchPath) {
+    int songIndex = getIndex(input, searchPath);
 
     if (!songIndex) { // Item is not present in the Soundpad library. We need to add it.
         printf("Attempting to add song to SoundPad library...\n");
-        if (addSound(searchTerm)) {
-            printf("Failed to add sound: %s", searchTerm);
+        if (addSound(addPath)) {
+            printf("Failed to add sound: %s", searchPath);
             return 1;
         }
         Sleep(1000);
         char* soundList = getSoundList();
         if (soundList != NULL) {
-            songIndex = getIndex(soundList, searchTerm);
+            songIndex = getIndex(soundList, searchPath);
         }
         free(soundList);
     }

@@ -8,4 +8,4 @@ char* getSoundList(void);
 int addSound(const char* url);
 int playSound(int index);
 int getIndex(char* inputCopy, const char* searchTerm);
-int checkForEntry(char* input, const char* searchTerm);
+int checkForEntry(char* input, const char* addPath, const char* searchPath);
