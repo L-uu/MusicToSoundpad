@@ -1,6 +1,3 @@
-<sub>_I'm a little special so I'll keep this nice and short..._</sub>🤤
-
-
 # MusicToSoundpad
 
 
@@ -12,6 +9,8 @@ This application assists you in playing Spotify music through Soundpad (so you c
 - Download the latest release **(MusicToSoundpad.zip)**.
 
 - Extract the files to any folder, the **.zip** should include the **MusicToSoundpad.exe** executable.
+
+- It is highly recommended to install Deno to solve JS challenges. This can be done easily by opening PowerShell and typing `irm https://deno.land/install.ps1 | iex`
 
 - Run the console application. On first launch, a folder called **utils** will be created. This is where the necessary dependencies (**yt-dlp.exe** and **ffmpeg.exe**) will be downloaded and kept updated on each launch.
 
