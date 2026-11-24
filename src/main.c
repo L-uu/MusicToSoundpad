@@ -197,7 +197,8 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
                 && wcscmp(windowTitle, L"Spotify Free")
                 && wcscmp(windowTitle, L"GDI+ Window (Spotify.exe)")
                 && wcscmp(windowTitle, L"TIDAL")
-                && wcscmp(windowTitle, L"Default IME")) {
+                && wcscmp(windowTitle, L"Default IME")
+                && wcscmp(windowTitle, L"MSCTFIME UI")) {
                 StartPlaying(windowTitle);
             }
             return FALSE; // Stop enumerating windows
